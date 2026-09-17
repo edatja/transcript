@@ -74,6 +74,17 @@ def process_text(
                 found.add(obj.tax_year)
         result.tax_years = sorted(y for y in found if y)
 
+    # Whose transcript is this? Take the recipient name that appears on the
+    # most documents; keep the others, because a name variant matters.
+    names: dict[str, int] = {}
+    for doc in result.income_documents:
+        if doc.recipient_name:
+            names[doc.recipient_name] = names.get(doc.recipient_name, 0) + 1
+    if names:
+        ordered = sorted(names, key=lambda n: (-names[n], n))
+        result.taxpayer_name = ordered[0]
+        result.taxpayer_name_variants = ordered[1:]
+
     for obj in (result.account, result.tax_return):
         if obj is not None:
             result.warnings.extend(obj.warnings)

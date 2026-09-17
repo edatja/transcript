@@ -36,6 +36,46 @@ _LEADER_RUN = re.compile(r"(?:\.[ \t]*){3,}")
 _ODD_SPACE = re.compile(r"[  -​﻿]")
 
 
+# Buttons the IRS Get Transcript web viewer bakes into the PDF when a
+# transcript is saved from the browser rather than downloaded. They are drawn
+# at the same vertical position as transcript lines, so pdfplumber interleaves
+# their glyphs into the line's text and produces corruption like
+# "RecDiopnieent'Psr inItdentification Number" -- which then fails to match any
+# label pattern, silently losing the field.
+_VIEWER_CHROME_WORDS = (
+    "Done", "Print", "Close", "Save", "Exit", "Back", "Help", "Cancel",
+)
+
+
+def _chrome_fonts(page) -> set[str]:
+    """Fonts on this page used ONLY to draw viewer chrome.
+
+    Identified by font rather than by position: the transcript body is a
+    monospace face and its headings a serif one, while the viewer's buttons
+    use the browser UI font. A font qualifies only when everything drawn in it
+    on the page is chrome words and nothing else, so no transcript content can
+    be caught by it.
+    """
+    from collections import defaultdict
+
+    groups: dict[str, list[str]] = defaultdict(list)
+    for char in page.chars:
+        groups[char.get("fontname", "")].append(char.get("text", ""))
+
+    drop: set[str] = set()
+    for font, chars in groups.items():
+        text = "".join(chars).strip()
+        # A long run is real content even if it starts with a chrome word.
+        if not text or len(text) > 40:
+            continue
+        remainder = text
+        for word in _VIEWER_CHROME_WORDS:
+            remainder = remainder.replace(word, "")
+        if not remainder.strip():
+            drop.add(font)
+    return drop
+
+
 @dataclass
 class Page:
     number: int      # 1-based, matches a PDF viewer
@@ -101,6 +141,11 @@ def extract_pdf(path: str | Path, *, layout: bool = False) -> Document:
         with pdfplumber.open(str(path)) as pdf:
             for index, page in enumerate(pdf.pages, start=1):
                 try:
+                    chrome = _chrome_fonts(page)
+                    if chrome:
+                        page = page.filter(
+                            lambda obj: obj.get("fontname") not in chrome
+                        )
                     raw = page.extract_text(layout=layout) or ""
                 except Exception as exc:  # one bad page must not lose the rest
                     raw = ""

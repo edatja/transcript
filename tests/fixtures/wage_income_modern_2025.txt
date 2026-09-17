@@ -1,0 +1,106 @@
+This Product Contains Sensitive Taxpayer Data
+Request Date: 09-10-2026
+Response Date: 09-10-2026
+Tracking Number: 999888777666
+Wage and Income Transcript
+TIN Provided: XXX-XX-9999
+Tax Period Requested: December, 2025
+
+Form 1099-NEC Nonemployee Compensation
+Issuer/Provider:
+Issuer's/Provider's Federal ID Number: 38-0000001
+RIVERSTONE TITLE LLC
+100 WOODWARD AVE
+DETROIT MI
+48226
+Recipient:
+Recipient's Identification Number: XXX-XX-9999
+JORDAN SAMPLE
+5 AIRE DRIVE
+LAS VEGAS NV
+89135
+Submission Type: Original document
+Second Notice Indicator: No second notice
+Non-Employee Compensation: $18,480.00
+Federal Income Tax Withheld: $0.00
+
+Form 1098 Mortgage Interest Statement
+Recipient/Lender:
+Recipient's Federal Identification Number (FIN): 94-0000002
+CASCADIA BANK, N. A.
+1 HOME CAMPUS
+DES MOINES, IA 50328
+Payer/Borrower:
+Payer's Social Security Number: XXX-XX-9999
+JORDAN SAMPLE
+5 AIRE DR
+LAS VEGAS, NV 89135
+Submission Type: Original document
+Account Number (Optional): MTG0000000001
+Mortgage Interest Received from Payer(s)/Borrower(s): $4,046.00
+Outstanding mortgage principle: $156,096.00
+Mortgage Origination Date: 05-01-2019
+
+Form SSA-1099 Benefits Statement
+Payer:
+Payer's Federal Identification Number (FIN): 52-0000003
+SOCIAL SECURITY ADMINISTRATION
+** 00000
+Payee:
+Payee's Identification Number: XXX-XX-9999
+JORDAN SAMPLE
+5 AIRE DR
+LAS VEGAS, NV 89135
+Submission Type: Original document
+Account Number (Optional):
+Pensions and Annuities (Total Benefits Paid): $177,414.00
+TY 2022 Payments: $41,000.00
+TY 2023 Payments: $43,000.00
+TY 2024 Payments: $45,000.00
+Trust Fund Indicator: Disability
+SSA/RRB Payments: Either RRB or SSA payments
+
+Form 1099-R Distributions from Pensions, Annuities, Retire or Profit
+Sharing Plans, IRAs, Insurance Contracts, etc.
+Payer:
+Payer's Federal Identification Number (FIN): 04-0000004
+CASCADE FINANCIAL SERVICES LLC
+200 WASHINGTON BLVD
+JERSEY CITY, NJ 07310
+Recipient:
+Recipient's Identification Number: XXX-XX-9999
+JORDAN SAMPLE
+5 AIRE DR
+LAS VEGAS, NV 89135
+Submission Type: Original document
+Account Number (Optional): 000000000001
+Distribution Code Value: Early Distribution, no known exception (in most cases, under age 59)
+Distribution Code: 1
+Distribution Code Value: Not significant
+Distribution Code:
+Tax Amount Undetermined Code: Tax amount not determined
+Total Distribution Code: Not checked
+SEP Indicator: IRA/SEP/SIMP box checked
+FATCA Indicator: Not FATCA
+Tax Withheld: $15,000.00
+Gross Distribution: $100,000.00
+Taxable Amount: $100,000.00
+
+Form 1099-R Distributions from Pensions, Annuities, Retire or Profit
+Sharing Plans, IRAs, Insurance Contracts, etc.
+Payer:
+Payer's Federal Identification Number (FIN): 84-0000005
+SUMMIT TRUST COMPANY LLC
+Recipient:
+Recipient's Identification Number: XXX-XX-9999
+JORDAN SAMPLE
+Submission Type: Original document
+Distribution Code Value: Direct rollover and rollover contribution
+Distribution Code: G
+Distribution Code Value: Not significant
+Distribution Code:
+Tax Amount Undetermined Code: Not checked
+Total Distribution Code: Total Distribution
+SEP Indicator: IRA/SEP/SIMP box not checked
+Gross Distribution: $24.00
+This Product Contains Sensitive Taxpayer Data

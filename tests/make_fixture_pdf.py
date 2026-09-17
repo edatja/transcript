@@ -25,7 +25,13 @@ LINES_PER_PAGE = int((MARGIN_TOP - 36) / LEADING)
 
 
 def _escape(text: str) -> str:
-    """PDF string literals escape backslash and both parentheses."""
+    """PDF string literals escape backslash and both parentheses.
+
+    Note: the base-14 Courier encoding maps the ASCII apostrophe to U+2019, so
+    text extracted back out carries a curly quote. That is a property of this
+    generator, not of real transcripts -- and it is harmless, because the
+    parsers match labels on words and normalise punctuation away.
+    """
     return (
         text.replace("\\", r"\\")
         .replace("(", r"\(")
@@ -33,17 +39,37 @@ def _escape(text: str) -> str:
     )
 
 
-def _content_stream(lines: list[str]) -> bytes:
+def _overlay_stream(line_index: int, text: str) -> str:
+    """Draw viewer chrome in a different font, overlapping a transcript line.
+
+    Reproduces what the IRS Get Transcript web viewer bakes in when a
+    transcript is saved from the browser: button labels drawn at the same
+    vertical position as a transcript line, whose glyphs pdfplumber then
+    interleaves into that line's text.
+    """
+    y = MARGIN_TOP - line_index * LEADING
+    return (
+        f"\nBT /F2 {FONT_SIZE + 2} Tf {MARGIN_X + 60} {y} Td "
+        f"({_escape(text)}) Tj ET"
+    )
+
+
+def _content_stream(lines: list[str], overlay: tuple[int, str] | None = None
+                    ) -> bytes:
     parts = [f"BT /F1 {FONT_SIZE} Tf {LEADING} TL {MARGIN_X} {MARGIN_TOP} Td"]
     for line in lines:
         # Tj draws the line, T* advances one leading. An empty line still
         # advances, which preserves the blank lines between form blocks.
         parts.append(f"({_escape(line)}) Tj T*")
     parts.append("ET")
-    return "\n".join(parts).encode("latin-1", errors="replace")
+    body = "\n".join(parts)
+    if overlay is not None:
+        body += _overlay_stream(*overlay)
+    return body.encode("latin-1", errors="replace")
 
 
-def text_to_pdf(text: str, out_path: Path) -> Path:
+def text_to_pdf(text: str, out_path: Path,
+                overlay: tuple[int, str] | None = None) -> Path:
     all_lines = text.splitlines()
     pages = [
         all_lines[i:i + LINES_PER_PAGE]
@@ -60,21 +86,31 @@ def text_to_pdf(text: str, out_path: Path) -> Path:
     )
 
     font_id = 3 + 2 * len(pages)
+    overlay_font_id = font_id + 1
     for index, page_lines in enumerate(pages):
         content_id = page_ids[index] + 1
         objects.append(
             f"<< /Type /Page /Parent 2 0 R "
             f"/MediaBox [0 0 {PAGE_WIDTH} {PAGE_HEIGHT}] "
-            f"/Resources << /Font << /F1 {font_id} 0 R >> >> "
+            f"/Resources << /Font << /F1 {font_id} 0 R "
+            f"/F2 {overlay_font_id} 0 R >> >> "
             f"/Contents {content_id} 0 R >>".encode()
         )
-        stream = _content_stream(page_lines)
+        # The overlay belongs on whichever page holds that line.
+        page_overlay = None
+        if overlay is not None:
+            start = index * LINES_PER_PAGE
+            if start <= overlay[0] < start + LINES_PER_PAGE:
+                page_overlay = (overlay[0] - start, overlay[1])
+        stream = _content_stream(page_lines, page_overlay)
         objects.append(
             b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n"
             + stream + b"\nendstream"
         )
 
     objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>")
+    # A DIFFERENT font, which is exactly how the chrome filter identifies it.
+    objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
 
     out = bytearray(b"%PDF-1.4\n")
     offsets: list[int] = []

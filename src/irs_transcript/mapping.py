@@ -275,16 +275,64 @@ def line_for(form_type: str, field: str) -> LineTarget | None:
     return _SPECIFIC.get((key, field)) or _BY_FIELD.get(field)
 
 
-def refine_1099r(doc) -> str:
-    """Pick 1040 line 4 (IRA) vs line 5 (pension) for a 1099-R.
+# The IRA/SEP/SIMPLE box is printed in several ways depending on the transcript
+# vintage: a bare "1"/"0", or prose like "IRA/SEP/SIMP box checked".
+_IRA_LABELS = ("IRA/SEP/SIMPLE Indicator", "SEP Indicator", "IRA Indicator")
 
-    The transcript's IRA/SEP/SIMPLE indicator is what distinguishes them; a
-    non-zero, non-blank value means the distribution came from an IRA.
+
+def ira_indicator(doc) -> bool | None:
+    """True if the 1099-R came from an IRA, False if not, None if unstated."""
+    for label in _IRA_LABELS:
+        raw = (doc.raw_fields.get(label) or "").strip()
+        if not raw:
+            continue
+        low = raw.lower()
+        if "not checked" in low or "box not checked" in low:
+            return False
+        if "checked" in low:
+            return True
+        if raw in {"0", "0.00"}:
+            return False
+        return True
+    return None
+
+
+def distribution_codes(doc) -> str:
+    """Every distribution code letter/number printed on a 1099-R, joined.
+
+    Transcripts print the code in one field and its meaning in another, and
+    repeat both for the second code position, so several labels are gathered.
     """
-    indicator = (doc.raw_fields.get("IRA/SEP/SIMPLE Indicator") or "").strip()
-    if indicator and indicator not in {"0", "0.00"}:
+    codes: list[str] = []
+    for label, value in doc.raw_fields.items():
+        if not label.lower().startswith("distribution code"):
+            continue
+        if label.lower().startswith("distribution code value"):
+            continue
+        text = (value or "").strip()
+        if text and text not in codes:
+            codes.append(text)
+    return "".join(codes)
+
+
+def distribution_meanings(doc) -> list[str]:
+    """The prose meanings the transcript prints for the distribution codes."""
+    out: list[str] = []
+    for label, value in doc.raw_fields.items():
+        if not label.lower().startswith("distribution code value"):
+            continue
+        text = (value or "").strip()
+        if text and text.lower() != "not significant" and text not in out:
+            out.append(text)
+    return out
+
+
+def refine_1099r(doc) -> str:
+    """Pick 1040 line 4 (IRA) vs line 5 (pension) for a 1099-R."""
+    indicator = ira_indicator(doc)
+    if indicator is True:
         return "4a/4b (IRA)"
-    if indicator in {"0", "0.00"}:
+    if indicator is False:
         return "5a/5b (pension/annuity)"
     return "4a/4b or 5a/5b (IRA indicator not stated)"
 

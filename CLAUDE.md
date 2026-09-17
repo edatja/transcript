@@ -119,3 +119,18 @@ python3 -m pytest -q
 3. Add its printed labels to `_BY_FORM` in `aliases.py`.
 4. Add the normalized field -> 1040 line row to `mapping.py`.
 5. Add a test asserting the amounts parse and the rollup lands on the right line.
+
+## Before trusting a parse of a real transcript
+
+Real transcripts vary more than the classic layout suggests. After parsing a
+new one, check `summary.md` for:
+
+- a payer shown as `_(not stated)_` -- a party-section or TIN-label variant
+- `no dollar amounts on this form` -- either a codes-only form (fine) or a
+  label variant (not fine)
+- withholding totalling 0.00 when a 1099-R or W-2 is present
+- garbled labels, which mean viewer chrome slipped past the font filter
+
+`docs/transcript-formats.md` has the variants found so far and what each one
+broke. Every one of them lost data silently rather than failing loudly, which
+is why the per-document parse notes exist.

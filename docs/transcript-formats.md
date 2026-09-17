@@ -189,3 +189,101 @@ ACCRUED INTEREST: 0.00 AS OF: Mar. 17, 2025
 Transcripts mask identifiers: `XXX-XX-1234`, `XX-XXX1234`. The last four
 digits are real, which is enough to match a payer between documents but not
 enough to reconstruct a TIN. Parsers keep the masked string verbatim.
+
+
+---
+
+# Layout variants found in real transcripts
+
+Everything above was written from the classic dot-leader layout. Transcripts
+saved from the current IRS *Get Transcript* web viewer differ in ways that each
+dropped data silently until fixed. All are covered by
+`tests/test_modern_layout.py`.
+
+## Viewer chrome is baked into the PDF
+
+A transcript saved from the browser carries the viewer's own "Done" and
+"Print" buttons, drawn at the same vertical position as a transcript line.
+pdfplumber interleaves the glyphs into that line:
+
+```
+RecDiopnieent'Psr inItdentification Number
+FATDCoAn eFiliPnrgin tRequirement
+EmpDloonyeee'sP rSinotcial Security Number
+```
+
+A corrupted label matches no pattern, so the field vanishes without a warning.
+`extract._chrome_fonts` identifies the overlay **by font** — the transcript
+body is monospace and its headings serif, while the buttons use the browser UI
+font — and drops a font only when everything drawn in it on that page is
+chrome words. A payer genuinely named "PRINT AND DESIGN DONE RIGHT LLC" is
+therefore safe.
+
+## Plain spacing instead of dot leaders
+
+Current transcripts print `Label: value` with a single space and no leaders.
+The `_PLAIN_COLON` fallback in `fields.py` handles this; both shapes occur in
+the wild and both must keep working.
+
+## Combined party headers, with inverted roles
+
+```
+Issuer/Provider:          <- 1099-NEC payer
+Recipient/Lender:         <- 1098 PAYER (the bank receives the interest)
+Payer/Borrower:           <- 1098 RECIPIENT (the taxpayer pays it)
+```
+
+A 1098 inverts the generic role words. Matching on "Payer" first files the
+**taxpayer's own SSN as the lender's EIN**. `_is_party_header` therefore
+resolves the specific role (`lender`, `borrower`) before the generic one
+(`payer`, `recipient`, `payee`, `filer`).
+
+## "Federal ID Number", not "Identification Number"
+
+1099-NEC blocks print `Issuer's/Provider's Federal ID Number`. When that was
+not recognised as a TIN label it was treated as ordinary data, which closed
+the party section — so the payer's **name on the next line was never read**,
+and the form showed as "(payer not stated)".
+
+## Withholding labelled "Tax Withheld"
+
+1099-R blocks label withholding simply `Tax Withheld`. Missing this reported
+**$0 of 1099 withholding** on a transcript that had five figures of it — a
+credit the taxpayer would have lost off line 25b.
+
+## Distribution codes, spelled out
+
+```
+Distribution Code Value: Early Distribution, no known exception (in most cases, under age 59)
+Distribution Code: 1
+Distribution Code Value: Not significant
+Distribution Code:
+Tax Amount Undetermined Code: Tax amount not determined
+Total Distribution Code: Not checked
+SEP Indicator: IRA/SEP/SIMP box checked
+```
+
+Both code positions are always printed; the unused one reads "Not significant"
+and must be discarded. The IRA/SEP/SIMPLE box arrives as prose
+("box checked" / "box not checked") rather than 1/0 — and it is what decides
+1040 line 4 versus line 5.
+
+## SSA-1099 arrears rows
+
+```
+Pensions and Annuities (Total Benefits Paid): $177,414.00
+TY 2022 Payments: $41,000.00
+TY 2023 Payments: $43,000.00
+TY 2024 Payments: $45,000.00
+Trust Fund Indicator: Disability
+```
+
+The `TY <year> Payments` rows **break down** the total — they are not
+additional benefits, and summing them would double the income. They signal a
+lump-sum award, which opens the section 86(e) election. The label carries a
+year, so it is matched by pattern in `flag_review_items` rather than aliased.
+
+## Forms that legitimately carry no dollars
+
+A 5498 can report only codes and an RMD date. That is not a parse failure, and
+the per-document note says so rather than implying an unsupported layout.

@@ -64,6 +64,7 @@ _PAYER_SECTIONS = {
     "issuer", "creditor", "servicer", "insurer", "corporation",
     "partnership", "estate or trust", "marketplace", "donee",
     "payer of record", "plan administrator", "service provider",
+    "provider", "custodian",
 }
 _RECIPIENT_SECTIONS = {
     "employee", "recipient", "borrower", "payer borrower", "student",
@@ -72,10 +73,20 @@ _RECIPIENT_SECTIONS = {
     "partner", "account holder",
 }
 
+# Role words that are generic enough to mean either side depending on the
+# form. When a combined header pairs one of these with a specific role, the
+# specific one decides.
+_GENERIC_SECTIONS = {"payer", "recipient", "payee", "filer"}
+
 # Any label naming a TIN, on either side of the transaction.
+#
+# "ID Number" must be here as well as "Identification Number": real 1099-NEC
+# blocks print "Issuer's/Provider's Federal ID Number". Without it the line is
+# treated as an ordinary data field, which closes the party section, and the
+# payer's NAME on the next line is never captured.
 _TIN_LABEL = re.compile(
-    r"identification\s+number|social\s+security\s+number|\bEIN\b|\bFIN\b"
-    r"|\bTIN\b|taxpayer\s+id",
+    r"identification\s+number|social\s+security\s+number"
+    r"|\bID\s+number\b|\bEIN\b|\bFIN\b|\bTIN\b|taxpayer\s+id",
     re.IGNORECASE,
 )
 
@@ -142,14 +153,32 @@ def _segment(lines_with_pages: list[tuple[int, str]]) -> list[_Block]:
 
 
 def _is_party_header(label: str, value: str) -> str | None:
-    """'payer' / 'recipient' if this label opens a party section."""
+    """'payer' / 'recipient' if this label opens a party section.
+
+    Real transcripts combine role names with a slash -- "Issuer/Provider:",
+    "Recipient/Lender:", "Payer/Borrower:" -- and which side a combined header
+    denotes depends on the form. "Recipient/Lender" is the PAYER on a 1098
+    (the bank receives the interest) while "Recipient" alone is the payee
+    everywhere else, so the parts are tested individually and the payer role
+    wins when a header names both.
+    """
     if value.strip():
         return None  # a party header has nothing after the colon
-    key = re.sub(r"[^a-z0-9]+", " ", label.lower()).strip()
-    if key in _PAYER_SECTIONS:
-        return "payer"
-    if key in _RECIPIENT_SECTIONS:
-        return "recipient"
+    key = re.sub(r"[^a-z0-9/]+", " ", label.lower()).strip()
+    parts = [re.sub(r"[^a-z0-9]+", " ", part).strip()
+             for part in key.split("/")] or [key]
+    parts = [part for part in parts if part]
+
+    # The SPECIFIC role decides, because a 1098 inverts the generic ones: the
+    # bank is "Recipient/Lender" (it receives the interest) and the taxpayer is
+    # "Payer/Borrower" (they pay it). Going by "payer" there would file the
+    # taxpayer's own SSN as the payer's EIN.
+    specific = [p for p in parts if p not in _GENERIC_SECTIONS]
+    for group in (specific, parts):
+        if any(p in _PAYER_SECTIONS for p in group):
+            return "payer"
+        if any(p in _RECIPIENT_SECTIONS for p in group):
+            return "recipient"
     return None
 
 
@@ -240,10 +269,20 @@ def _parse_block(block: _Block, source_file: str) -> IncomeDocument:
         doc.raw_fields["_recipient_address"] = ", ".join(recipient.address)
 
     if not doc.amounts:
-        doc.warnings.append(
-            "no recognized dollar amounts in this block -- it may be an "
-            "unsupported form layout; check raw_fields"
-        )
+        if doc.raw_fields:
+            # Some forms genuinely carry no dollars: a 5498 reporting only
+            # account codes and an RMD date, for instance. Say which it is
+            # rather than implying the parser failed.
+            doc.warnings.append(
+                f"no dollar amounts on this form -- it reported "
+                f"{len(doc.raw_fields)} non-monetary field(s) only "
+                f"(codes/dates/indicators). See raw_fields if that is "
+                f"unexpected."
+            )
+        else:
+            doc.warnings.append(
+                "nothing parsed from this block -- unsupported form layout"
+            )
     return doc
 
 

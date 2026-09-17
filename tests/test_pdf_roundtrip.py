@@ -126,3 +126,65 @@ def test_image_only_pdf_warns_loudly(tmp_path):
     from irs_transcript.extract import extract_pdf
     doc = extract_pdf(empty)
     assert any("NO TEXT LAYER" in w for w in doc.warnings)
+
+
+def test_viewer_chrome_is_stripped_before_parsing(tmp_path):
+    """Transcripts saved from the IRS web viewer carry its button labels.
+
+    They are drawn at the same vertical position as a transcript line, so
+    pdfplumber interleaves the glyphs and produces corruption such as
+    "RecDiopnieent'Psr inItdentification Number" -- which matches no label
+    pattern, so the field is dropped without any warning.
+    """
+    from irs_transcript.extract import extract_pdf
+
+    text = (
+        "Wage and Income Transcript\n"
+        "Tax Period Requested: December, 2025\n"
+        "Form 1099-NEC Nonemployee Compensation\n"
+        "Issuer/Provider:\n"
+        "Issuer's/Provider's Federal ID Number: 38-0000001\n"
+        "RIVERSTONE TITLE LLC\n"
+        "Recipient:\n"
+        "Recipient's Identification Number: XXX-XX-9999\n"
+        "JORDAN SAMPLE\n"
+        "Non-Employee Compensation: $18,480.00\n"
+    )
+    pdf = text_to_pdf(text, tmp_path / "chrome.pdf", overlay=(7, "Done Print"))
+    extracted = extract_pdf(pdf).text
+
+    assert "Done" not in extracted and "Print" not in extracted
+    # The apostrophe is normalised away because the generator's Courier
+    # encoding renders ' as U+2019; the parsers match on words, not quotes.
+    assert "Identification Number" in extracted
+    assert "RIVERSTONE TITLE LLC" in extracted
+
+    result = process_file(pdf)
+    doc = result.income_documents[0]
+    assert doc.payer_name == "RIVERSTONE TITLE LLC"
+    assert doc.amounts["nonemployee_comp"] == Decimal("18480.00")
+
+
+def test_chrome_filter_keeps_a_font_that_carries_real_content(tmp_path):
+    """The filter must not drop a font just because chrome words appear in it.
+
+    It only drops a font when EVERYTHING drawn in that font is chrome.
+    """
+    from irs_transcript.extract import extract_pdf
+
+    text = (
+        "Wage and Income Transcript\n"
+        "Tax Period Requested: December, 2025\n"
+        "Form W-2 Wage and Tax Statement\n"
+        "Employer:\n"
+        "Employer Identification Number (EIN): 35-0000009\n"
+        "PRINT AND DESIGN DONE RIGHT LLC\n"
+        "Wages, Tips and Other Compensation: $50,000.00\n"
+    )
+    pdf = text_to_pdf(text, tmp_path / "keep.pdf")
+    extracted = extract_pdf(pdf).text
+    assert "PRINT AND DESIGN DONE RIGHT LLC" in extracted
+
+    result = process_file(pdf)
+    assert result.income_documents[0].payer_name == \
+        "PRINT AND DESIGN DONE RIGHT LLC"

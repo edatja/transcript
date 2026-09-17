@@ -152,6 +152,11 @@ class ParsedTranscript:
     pages: int = 0
     tax_years: list[str] = field(default_factory=list)
     taxpayer_tin: str | None = None
+    taxpayer_name: str | None = None
+    # A transcript can list the same person under more than one name after a
+    # marriage or a legal change. Worth surfacing: a name the IRS has not
+    # caught up with is a common cause of a mismatched or rejected return.
+    taxpayer_name_variants: list[str] = field(default_factory=list)
     request_date: str | None = None
     income_documents: list[IncomeDocument] = field(default_factory=list)
     account: AccountTranscript | None = None
@@ -165,6 +170,8 @@ class ParsedTranscript:
             "pages": self.pages,
             "tax_years": self.tax_years,
             "taxpayer_tin": self.taxpayer_tin,
+            "taxpayer_name": self.taxpayer_name,
+            "taxpayer_name_variants": self.taxpayer_name_variants,
             "request_date": self.request_date,
             "income_documents": [d.to_dict() for d in self.income_documents],
             "account": self.account.to_dict() if self.account else None,

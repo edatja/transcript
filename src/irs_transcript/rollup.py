@@ -15,7 +15,14 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from decimal import Decimal
 
-from .mapping import LineTarget, is_memo, line_for, refine_1099r
+from .mapping import (
+    LineTarget,
+    distribution_codes,
+    distribution_meanings,
+    is_memo,
+    line_for,
+    refine_1099r,
+)
 from .models import IncomeDocument
 
 
@@ -192,11 +199,69 @@ def flag_review_items(documents: list[IncomeDocument]) -> list[str]:
         )
 
     for doc in documents:
-        code = (doc.raw_fields.get("Distribution Code(s)") or "").strip()
-        if doc.form_type == "1099-R" and code in {"1", "J", "S"}:
+        if doc.form_type != "1099-R":
+            continue
+        codes = distribution_codes(doc)
+        meanings = distribution_meanings(doc)
+        payer = doc.payer_name or "unknown payer"
+        gross = doc.amounts.get("gross_distribution")
+        amount = f" of {gross:,.2f}" if gross is not None else ""
+        prose = f" -- transcript says: {'; '.join(meanings)}" if meanings else ""
+
+        if any(c in {"1", "J", "S"} for c in codes):
             flags.append(
-                f"1099-R from {doc.payer_name or 'unknown payer'} has "
-                f"distribution code '{code}' (early distribution). Form 5329 "
-                f"may be needed unless an exception applies."
+                f"EARLY DISTRIBUTION: 1099-R from {payer}{amount} carries "
+                f"code '{codes}'{prose}. The 10% additional tax on Form 5329 "
+                f"applies unless an exception does."
+            )
+        if any(c in {"G", "H"} for c in codes) or any(
+            "rollover" in m.lower() for m in meanings
+        ):
+            flags.append(
+                f"ROLLOVER: 1099-R from {payer}{amount} carries code "
+                f"'{codes}'{prose}. A direct rollover is generally NOT taxable "
+                f"-- it belongs on line 4a/5a with 'ROLLOVER' and a zero or "
+                f"reduced taxable amount, not in income."
+            )
+        undetermined = (
+            doc.raw_fields.get("Tax Amount Undetermined Code")
+            or doc.raw_fields.get("Taxable Amount Not Determined")
+            or ""
+        ).strip().lower()
+        if undetermined and "not checked" not in undetermined:
+            flags.append(
+                f"TAXABLE AMOUNT NOT DETERMINED on the 1099-R from {payer}. "
+                f"The payer did not compute the taxable portion, so the "
+                f"transcript's taxable figure is not authoritative -- basis, "
+                f"nondeductible contributions (Form 8606) or a rollover may "
+                f"reduce it."
+            )
+
+    for doc in documents:
+        if doc.form_type not in ("SSA-1099", "RRB-1099"):
+            continue
+        prior = sorted(
+            label for label in doc.raw_fields
+            if re.match(r"^TY\s+\d{4}\s+Payments$", label.strip(), re.I)
+            and (doc.raw_fields[label] or "").strip()
+        )
+        if prior:
+            years = ", ".join(
+                re.sub(r"[^0-9]", "", label) for label in prior
+            )
+            flags.append(
+                f"LUMP-SUM SOCIAL SECURITY: the SSA-1099 reports payments "
+                f"attributable to prior years ({years}). A section 86(e) "
+                f"lump-sum election can substantially reduce the taxable "
+                f"portion versus taxing it all in the year received. Prior-year "
+                f"AGI and benefit figures are needed to run the comparison."
+            )
+        fund = (doc.raw_fields.get("Trust Fund Indicator") or "").strip()
+        if fund:
+            flags.append(
+                f"SSA-1099 trust fund indicator is '{fund}'. Disability "
+                f"benefits paid under social security are taxed the same as "
+                f"retirement benefits -- confirm this is not workers' "
+                f"compensation or SSI, which are treated differently."
             )
     return flags

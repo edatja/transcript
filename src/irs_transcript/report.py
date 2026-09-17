@@ -254,23 +254,25 @@ def build_summary(results: list[ParsedTranscript]) -> str:
     all_docs = [d for r in results for d in r.income_documents]
 
     if all_docs:
+        # file name -> who the transcript belongs to
+        owners = {
+            Path(r.file).name: (r.taxpayer_name or Path(r.file).name)
+            for r in results
+        }
+        variants = {
+            Path(r.file).name: r.taxpayer_name_variants for r in results
+        }
+
         years = sorted({d.tax_year for d in all_docs if d.tax_year})
         for year in years or [None]:
             docs = [d for d in all_docs if d.tax_year == year]
             out += [f"## Tax year {year or '(not stated)'} — "
                     f"{len(docs)} information return(s)", ""]
 
-            counts = {}
-            for d in docs:
-                counts[d.form_type] = counts.get(d.form_type, 0) + 1
-            inventory = ", ".join(
-                f"{k} ×{v}" if v > 1 else k for k, v in sorted(counts.items())
-            )
-            out += [f"**On file:** {inventory}", ""]
-
             wh = withholding_summary(docs)
             out += [
-                "**Federal withholding reported to the IRS**", "",
+                "**Federal withholding reported to the IRS** "
+                "(all filers combined)", "",
                 "| Source | 1040 line | Amount |", "|---|---|---|",
                 f"| Form(s) W-2 | 25a | {wh['from_w2_line_25a']:,.2f} |",
                 f"| Form(s) 1099 | 25b | {wh['from_1099_line_25b']:,.2f} |",
@@ -284,8 +286,52 @@ def build_summary(results: list[ParsedTranscript]) -> str:
                 out += [f"- {f}" for f in flags]
                 out.append("")
 
-            out += ["### Documents", ""]
-            out += _document_rows(docs)
+            # Group by source transcript. On a joint return each spouse's
+            # documents must stay attributable to that spouse: a W-2 belongs
+            # to one of them, and Schedule C / SE income has to be assigned to
+            # the right person or the SE tax computes against the wrong record.
+            by_file: dict[str, list] = {}
+            for d in docs:
+                key = d.source.file if d.source else "(unknown source)"
+                by_file.setdefault(key, []).append(d)
+
+            for file_name in sorted(by_file):
+                group = by_file[file_name]
+                owner = owners.get(file_name, file_name)
+                heading = (f"### {owner} — {len(group)} information return(s)"
+                           if len(by_file) > 1
+                           else f"### Documents — {len(group)}")
+                out += [heading, ""]
+
+                if len(by_file) > 1:
+                    alts = variants.get(file_name) or []
+                    if alts:
+                        out += [
+                            f"_Also appears on these forms as: "
+                            f"{', '.join(alts)}. Confirm the name the IRS has "
+                            f"on file matches the return._", "",
+                        ]
+
+                counts: dict[str, int] = {}
+                for d in group:
+                    counts[d.form_type] = counts.get(d.form_type, 0) + 1
+                inventory = ", ".join(
+                    f"{k} ×{v}" if v > 1 else k
+                    for k, v in sorted(counts.items())
+                )
+                out += [f"**On file:** {inventory}", ""]
+
+                if len(by_file) > 1:
+                    gwh = withholding_summary(group)
+                    if gwh["total"] != 0:
+                        out += [
+                            f"**Withholding on these forms:** "
+                            f"{gwh['total']:,.2f} "
+                            f"(W-2 {gwh['from_w2_line_25a']:,.2f}, "
+                            f"1099 {gwh['from_1099_line_25b']:,.2f})", "",
+                        ]
+
+                out += _document_rows(group)
 
     for r in results:
         out += _account_section(r)

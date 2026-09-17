@@ -23,6 +23,9 @@ from .fields import normalize_label
 _COMMON = {
     "Federal Income Tax Withheld": "federal_withholding",
     "Federal Tax Withheld": "federal_withholding",
+    # Real 1099-R blocks label withholding simply "Tax Withheld". Missing this
+    # drops a credit the taxpayer is entitled to, straight off line 25b.
+    "Tax Withheld": "federal_withholding",
     "Foreign Tax Paid": "foreign_tax_paid",
     "Investment Expenses": "investment_expenses",
     "State Income Tax Withheld": "state_withholding",
@@ -193,6 +196,8 @@ _BY_FORM: dict[str, dict[str, str]] = {
         "Refund of Overpaid Interest": "refund_of_overpaid_interest",
         "Mortgage Insurance Premiums": "mortgage_insurance_premiums",
         "Outstanding Mortgage Principal": "outstanding_mortgage_principal",
+        # The IRS transcript spells it "principle".
+        "Outstanding mortgage principle": "outstanding_mortgage_principal",
         "Real Estate Taxes": "real_estate_taxes",
     },
     "1098-E": {
@@ -242,6 +247,8 @@ _BY_FORM: dict[str, dict[str, str]] = {
         # generic label "Pensions and Annuities". It is social security, and
         # it belongs on 1040 line 6a -- NOT line 5a with pension income.
         "Pensions and Annuities": "social_security_benefits",
+        "Pensions and Annuities (Total Benefits Paid)":
+            "social_security_benefits",
         "Benefits Paid": "social_security_benefits",
         "Benefits Repaid": "social_security_repaid",
         "Net Benefits": "social_security_benefits",
@@ -290,6 +297,12 @@ INDICATOR_LABELS = {
     "Account Number": "account_number",
     "Distribution Code(s)": "distribution_code",
     "Distribution Code": "distribution_code",
+    # Real transcripts print the code's meaning in prose alongside the letter.
+    "Distribution Code Value": "distribution_code_value",
+    "Tax Amount Undetermined Code": "taxable_amount_not_determined",
+    "Total Distribution Code": "total_distribution_indicator",
+    "SEP Indicator": "ira_sep_simple_indicator",
+    "Trust Fund Indicator": "trust_fund_indicator",
     "IRA/SEP/SIMPLE Indicator": "ira_sep_simple_indicator",
     "Taxable Amount Not Determined": "taxable_amount_not_determined",
     "Total Distribution": "total_distribution_indicator",
