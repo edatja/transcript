@@ -1,0 +1,180 @@
+This Product Contains Sensitive Taxpayer Data
+Wage and Income Transcript
+Request Date: 03-15-2025
+Response Date: 03-15-2025
+Tracking Number: 100200300400
+SSN Provided: XXX-XX-4321
+Tax Period Requested: December, 2024
+
+Form W-2 Wage and Tax Statement
+Employer:
+Employer Identification Number (EIN):XX-XXX1111
+NORTHWIND TRADING LLC
+400 HARBOR ST
+SEATTLE, WA 98101
+Employee:
+Employee's Social Security Number:XXX-XX-4321
+PAT SAMPLE
+22 CEDAR LN
+SEATTLE, WA 98103
+Submission Type:....................................Original document
+Wages, Tips and Other Compensation:.................$88,450.00
+Federal Income Tax Withheld:........................$9,120.00
+Social Security Wages:..............................$91,200.00
+Social Security Tax Withheld:.......................$5,654.40
+Medicare Wages and Tips:............................$91,200.00
+Medicare Tax Withheld:..............................$1,322.40
+Social Security Tips:...............................$0.00
+Allocated Tips:.....................................$0.00
+Dependent Care Benefits:............................$0.00
+Deferred Compensation:..............................$2,750.00
+Code "Q" Nontaxable Combat Pay:.....................$0.00
+Code "W" Employer Contributions to a Health Savings Account:.$1,500.00
+Code "DD" Cost of Employer-Sponsored Health Coverage:$14,200.00
+Third Party Sick Pay Indicator:.....................Unanswered
+
+Form W-2 Wage and Tax Statement
+Employer:
+Employer Identification Number (EIN):XX-XXX2222
+CASCADE STAFFING INC
+9 PINE AVE
+TACOMA, WA 98402
+Employee:
+Employee's Social Security Number:XXX-XX-4321
+PAT SAMPLE
+Submission Type:....................................Original document
+Wages, Tips and Other Compensation:.................$12,300.00
+Federal Income Tax Withheld:........................$740.00
+Social Security Wages:..............................$12,300.00
+Social Security Tax Withheld:.......................$762.60
+Medicare Wages and Tips:............................$12,300.00
+Medicare Tax Withheld:..............................$178.35
+
+Form 1099-NEC
+Payer:
+Payer's Federal Identification Number (FIN):XX-XXX3333
+ORCHID DESIGN CO
+77 MARKET ST
+PORTLAND, OR 97204
+Recipient:
+Recipient's Identification Number:XXX-XX-4321
+PAT SAMPLE
+Submission Type:....................................Original document
+Account Number (Optional):..........................
+Second Notice Indicator:............................No Second Notice
+Non-Employee Compensation:..........................$24,000.00
+Federal Income Tax Withheld:........................$0.00
+Direct Sales Indicator:.............................
+
+Form 1099-INT
+Payer:
+Payer's Federal Identification Number (FIN):XX-XXX4444
+FIRST HARBOR BANK
+Recipient:
+Recipient's Identification Number:XXX-XX-4321
+PAT SAMPLE
+Submission Type:....................................Original document
+Interest:...........................................$1,240.00
+Early Withdrawal Penalty:...........................$0.00
+Interest on US Savings Bonds and Treasury Obligations:$0.00
+Federal Income Tax Withheld:........................$0.00
+Investment Expenses:................................$0.00
+Foreign Tax Paid:...................................$0.00
+Tax Exempt Interest:................................$310.00
+Specified Private Activity Bond Interest:...........$0.00
+Market Discount:....................................$0.00
+Bond Premium:.......................................$0.00
+
+Form 1099-DIV
+Payer:
+Payer's Federal Identification Number (FIN):XX-XXX5555
+MERIDIAN BROKERAGE
+Recipient:
+Recipient's Identification Number:XXX-XX-4321
+PAT SAMPLE
+Submission Type:....................................Original document
+Ordinary Dividend:..................................$3,400.00
+Qualified Dividends:................................$2,900.00
+Total Capital Gain Distribution:....................$650.00
+Unrecaptured Section 1250 Gain:.....................$0.00
+Nondividend Distributions:..........................$0.00
+Federal Income Tax Withheld:........................$0.00
+Section 199A Dividends:.............................$120.00
+Exempt Interest Dividend:...........................$0.00
+Foreign Tax Paid:...................................$47.00
+
+Form 1099-R Distributions From Pensions, Annuities, Retirement or Profit-Sharing Plans, IRAs, Insurance Contracts, etc.
+Payer:
+Payer's Federal Identification Number (FIN):XX-XXX6666
+SUMMIT RETIREMENT SERVICES
+Recipient:
+Recipient's Identification Number:XXX-XX-4321
+PAT SAMPLE
+Submission Type:....................................Original document
+Gross Distribution:.................................$15,000.00
+Taxable Amount:.....................................$15,000.00
+Taxable Amount Not Determined:......................
+Total Distribution:.................................
+Capital Gain:.......................................$0.00
+Federal Income Tax Withheld:........................$3,000.00
+Employee Contributions:.............................$0.00
+Net Unrealized Appreciation:........................$0.00
+Distribution Code(s):...............................7
+IRA/SEP/SIMPLE Indicator:...........................0
+
+Form 1099-G
+Payer:
+Payer's Federal Identification Number (FIN):XX-XXX7777
+STATE OF WASHINGTON
+Recipient:
+Recipient's Identification Number:XXX-XX-4321
+PAT SAMPLE
+Submission Type:....................................Original document
+Unemployment Compensation:..........................$4,800.00
+State or Local Income Tax Refunds, Credits or Offsets:$0.00
+Federal Income Tax Withheld:........................$480.00
+Taxable Grants:.....................................$0.00
+
+Form 1098 Mortgage Interest Statement
+Lender:
+Lender's Federal Identification Number (FIN):XX-XXX8888
+PACIFIC HOME LOANS
+Borrower:
+Borrower's Identification Number:XXX-XX-4321
+PAT SAMPLE
+Submission Type:....................................Original document
+Mortgage Interest Received from Payer(s)/Borrower(s):$14,610.00
+Points Paid on Purchase of Principal Residence:.....$0.00
+Refund of Overpaid Interest:........................$0.00
+Mortgage Insurance Premiums:........................$0.00
+Outstanding Mortgage Principal:.....................$395,000.00
+
+Form 1098-E Student Loan Interest Statement
+Lender:
+Lender's Federal Identification Number (FIN):XX-XXX9999
+EDUSERVE LOAN SERVICING
+Borrower:
+Borrower's Identification Number:XXX-XX-4321
+PAT SAMPLE
+Submission Type:....................................Original document
+Student Loan Interest:..............................$1,180.00
+
+Form SSA-1099
+Recipient:
+Recipient's Identification Number:XXX-XX-4321
+PAT SAMPLE
+Pensions and Annuities:.............................$9,600.00
+Federal Income Tax Withheld:........................$0.00
+
+Form 5498 IRA Contribution Information
+Trustee:
+Trustee's Federal Identification Number (FIN):XX-XXX1212
+MERIDIAN BROKERAGE IRA SERVICES
+Participant:
+Participant's Identification Number:XXX-XX-4321
+PAT SAMPLE
+IRA Contributions:..................................$7,000.00
+Rollover Contributions:.............................$0.00
+Roth IRA Conversion Amount:.........................$0.00
+Fair Market Value of Account:.......................$142,300.00
+This Product Contains Sensitive Taxpayer Data

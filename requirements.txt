@@ -1,0 +1,18 @@
+# Stage 1 — local PDF extraction. No network, no API calls, no tokens.
+pdfplumber>=0.11.0     # text extraction; wraps pdfminer.six, good with dot leaders
+
+# pdfminer.six (a pdfplumber dependency) imports `cryptography` at module
+# load. Some Linux distributions ship an older system `cryptography` whose
+# Rust bindings panic on import, which surfaces as a confusing
+# "pyo3_runtime.PanicException" the first time you run the tool. Pinning a
+# recent version avoids it.
+cryptography>=42.0
+
+# Optional: OCR fallback for scanned/faxed transcripts that have no text layer.
+# Only needed if `run.py` reports "no text layer". Also needs the system
+# binaries `tesseract` and `poppler-utils` installed.
+# pytesseract>=0.3.10
+# pdf2image>=1.17.0
+
+# Dev
+pytest>=8.0

@@ -1,0 +1,41 @@
+This Product Contains Sensitive Taxpayer Data
+
+Tax Return Transcript
+
+Request Date: 03-15-2025
+Response Date: 03-15-2025
+Tracking Number: 100200300401
+SSN Provided: XXX-XX-4321
+Tax Period Ending: Dec. 31, 2023
+
+The following items reflect the amount as shown on the return (PR), and the amount as adjusted (PC), if applicable.
+
+SSN: XXX-XX-4321
+SPOUSE SSN:
+NAME(S) SHOWN ON RETURN: PAT SAMPLE
+ADDRESS: 22 CEDAR LN
+FILING STATUS: Single
+FORM NUMBER: 1040
+CYCLE POSTED: 20241805
+RECEIVED DATE: Apr. 15, 2024
+REMITTANCE: $0.00
+EXEMPTION NUMBER: 1
+
+Income
+WAGES, SALARIES, TIPS, ETC:................................$96,400.00
+TAXABLE INTEREST INCOME: SCH B:............................$980.00
+TAX-EXEMPT INTEREST:.......................................$0.00
+ORDINARY DIVIDEND INCOME: SCH B:...........................$2,150.00
+QUALIFIED DIVIDENDS:.......................................$1,800.00
+BUSINESS INCOME OR LOSS: SCH C:............................$18,200.00
+BUSINESS INCOME OR LOSS PER COMPUTER:......................$18,200.00
+TOTAL INCOME:..............................................$117,730.00
+TOTAL INCOME PER COMPUTER:.................................$119,930.00
+ADJUSTED GROSS INCOME:.....................................$114,450.00
+ADJUSTED GROSS INCOME PER COMPUTER:........................$116,650.00
+STANDARD DEDUCTION PER COMPUTER:...........................$13,850.00
+TAXABLE INCOME:............................................$100,600.00
+TAXABLE INCOME PER COMPUTER:...............................$102,800.00
+TENTATIVE TAX:.............................................$17,400.00
+TOTAL TAX LIABILITY TP PER COMPUTER:.......................$18,100.00
+TOTAL PAYMENTS:............................................$19,000.00

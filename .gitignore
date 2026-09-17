@@ -1,0 +1,41 @@
+# ---------------------------------------------------------------------------
+# TAXPAYER DATA -- never commit real transcripts or client files.
+#
+# Test fixtures are synthetic TEXT only. The PDF fixtures the tests need are
+# generated at test time by tests/make_fixture_pdf.py, so that NO PDF is ever
+# committable to this repository by accident -- including a real one.
+# ---------------------------------------------------------------------------
+data/input/*
+!data/input/.gitkeep
+data/output/*
+!data/output/.gitkeep
+
+# Document formats taxpayer records arrive in. No exceptions.
+*.pdf
+*.PDF
+*.xls
+*.xlsx
+*.csv
+*.tif
+*.tiff
+*.jpg
+*.jpeg
+*.png
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+build/
+dist/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

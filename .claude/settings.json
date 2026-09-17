@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 run.py:*)",
+      "Bash(python3 -m pytest:*)",
+      "Bash(python3 tests/make_fixture_pdf.py:*)",
+      "Bash(python3 -m pip install -r requirements.txt)",
+      "Read(data/output/**)",
+      "Read(src/**)",
+      "Read(tests/**)",
+      "Read(docs/**)"
+    ],
+    "deny": [
+      "Read(data/input/**)",
+      "Bash(pdftotext:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)"
+    ]
+  }
+}
