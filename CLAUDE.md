@@ -58,6 +58,11 @@ that is what keeps a 60-block 1099-B year small.
 5. **Mappings are review aids, not tax advice.** `mapping.py` suggests which
    Form 1040 line a transcript amount usually feeds. The preparer decides.
    Say so in any output that presents a mapping.
+6. **Refuse to total on partial data when the gap biases the answer.** The
+   §86(e) worksheet withholds its bottom line while any attribution year's
+   income is missing, because omitting a year understates the ceiling and
+   makes the election look better than it is. Prefer no answer to a
+   flattering one.
 
 ## Commands
 
@@ -77,6 +82,11 @@ python3 run.py --classify data/input/*.pdf
 # See the raw extracted text of one page (debugging parsers only)
 python3 run.py --dump-text data/input/foo.pdf --page 3
 
+# Section 86(e) social security lump-sum election.
+# `run.py` writes a pre-filled data/output/lump_sum_input.csv whenever an
+# SSA-1099 reports prior-year payments. Fill in each year's income, then:
+python3 run.py --lump-sum data/output/lump_sum_input.csv
+
 # Tests (synthetic fixtures, no real data)
 python3 -m pytest -q
 ```
@@ -94,6 +104,7 @@ python3 -m pytest -q
 | `src/irs_transcript/pipeline.py` | extract -> classify -> parse. Takes text, so it is testable. |
 | `src/irs_transcript/mapping.py` | Normalized field -> Form 1040 / schedule line table. |
 | `src/irs_transcript/rollup.py` | Aggregates documents into per-line totals. |
+| `src/irs_transcript/lump_sum.py` | §86 inclusion and the §86(e) election. Pure computation, keyword-only args. |
 | `src/irs_transcript/report.py` | Writes the four output artifacts. |
 | `src/irs_transcript/models.py` | Dataclasses. Amounts are `Decimal` or `None`, never `float`. |
 | `tests/fixtures/` | Synthetic transcript text. Safe to commit. |

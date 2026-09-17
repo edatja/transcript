@@ -106,6 +106,28 @@ immediately that a W-2 is missing — and `summary.md` tells you which employer.
 
 ---
 
+## Social security lump-sum election (§86(e))
+
+If a transcript shows an SSA-1099 with a retroactive award — prior-year rows
+like `TY 2023 Payments` — `run.py` also writes
+`data/output/lump_sum_input.csv`, pre-filled with each year and amount.
+
+Open it in a spreadsheet, fill in each year's AGI and filing status from that
+year's return, and run:
+
+```bash
+python3 run.py --lump-sum data/output/lump_sum_input.csv
+```
+
+You get `lump_sum_worksheet.md` showing the tax with and without the election.
+
+**If you don't have every year's figures yet, it will not give you a total.**
+That's deliberate: a missing year can only add to the cap, so leaving it out
+would make the election look better than it really is. The years you have
+filled in still compute, so you can see them.
+
+---
+
 ## Things worth knowing
 
 **Every number is literal.** Nothing is estimated or inferred. If a box was

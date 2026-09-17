@@ -20,6 +20,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from .classify import TranscriptType, describe
+from .fields import parse_money
 from .models import ParsedTranscript
 from .parsers.account import PAYMENT_CODES, payments_and_credits
 from .rollup import Rollup, build_rollup, flag_review_items, withholding_summary
@@ -503,9 +504,326 @@ def write_all(
     if not rollups and all_docs:
         rollups = {"(year not stated)": build_rollup(all_docs, None)}
 
-    return {
+    written = {
         "json": write_json(results, out_dir / "transcripts.json"),
         "summary": write_summary(results, out_dir / "summary.md"),
         "rollup": write_rollup(rollups, out_dir / "rollup.md"),
         "crosscheck": write_crosscheck(rollups, out_dir / "crosscheck.csv"),
     }
+    # An SSA-1099 carrying prior-year rows means the §86(e) election is on the
+    # table. Pre-fill the worksheet so the preparer only has to add the
+    # prior-year income figures, which no transcript can supply.
+    template = write_lump_sum_template(results, out_dir / "lump_sum_input.csv")
+    if template is not None:
+        written["lump_sum_template"] = template
+    return written
+
+
+# ---------------------------------------------------------------------------
+# Section 86(e) lump-sum election
+# ---------------------------------------------------------------------------
+LUMP_SUM_HEADER = [
+    "year", "role", "amount", "your_magi_that_year", "filing_status",
+    "ss_already_received_that_year", "tax_exempt_interest",
+]
+
+_LUMP_SUM_NOTES = [
+    "# Section 86(e) lump-sum election worksheet -- FILL IN THE BLANKS",
+    "#",
+    "# The 'year_of_receipt' row is the year the lump sum was PAID.",
+    "#   amount                = TOTAL benefits on that year's SSA-1099",
+    "#   your_magi_that_year   = that year's AGI with the benefits left out,",
+    "#                           before the standard/itemized deduction",
+    "# Each 'prior_year' row is a year the arrears are attributable to.",
+    "#   amount                = the TY <year> Payments figure on the SSA-1099",
+    "#   your_magi_that_year   = THAT year's AGI (from that year's return)",
+    "#   ss_already_received   = benefits actually paid in that year, if any",
+    "#",
+    "# filing_status: joint, single, hoh, qss, mfs_apart, mfs_together",
+    "# Leave tax_exempt_interest at 0 unless there was any.",
+    "# Lines starting with # are ignored.",
+]
+
+
+def write_lump_sum_template(
+    results: list[ParsedTranscript], path: Path
+) -> Path | None:
+    """Pre-fill a lump-sum worksheet from the SSA-1099 rows already parsed.
+
+    Returns None when no SSA-1099 with prior-year payments was found, which
+    means the election does not arise on these transcripts.
+    """
+    import re
+
+    rows: list[list[str]] = []
+    receipt_year = ""
+    total_benefits = ""
+
+    for result in results:
+        for doc in result.income_documents:
+            if doc.form_type not in ("SSA-1099", "RRB-1099"):
+                continue
+            prior: list[tuple[str, str]] = []
+            for label, value in doc.raw_fields.items():
+                m = re.match(r"^TY\s+(\d{4})\s+Payments$", label.strip(), re.I)
+                if m and (value or "").strip():
+                    amount = parse_money(value)
+                    if amount is not None and amount != 0:
+                        prior.append((m.group(1), f"{amount:.2f}"))
+            if not prior:
+                continue
+            benefits = doc.amounts.get("social_security_benefits")
+            receipt_year = doc.tax_year or ""
+            total_benefits = f"{benefits:.2f}" if benefits is not None else ""
+            rows.append([
+                receipt_year, "year_of_receipt", total_benefits, "", "joint", "", "0",
+            ])
+            for year, amount in sorted(prior, reverse=True):
+                rows.append([year, "prior_year", amount, "", "joint", "0", "0"])
+
+    if not rows:
+        return None
+
+    with path.open("w", newline="") as handle:
+        for note in _LUMP_SUM_NOTES:
+            handle.write(note + "\n")
+        writer = csv.writer(handle)
+        writer.writerow(LUMP_SUM_HEADER)
+        writer.writerows(rows)
+    return path
+
+
+def _num(value: str, label: str, row: int) -> Decimal:
+    text = (value or "").strip().replace(",", "").replace("$", "")
+    if not text:
+        raise ValueError(
+            f"row {row}: '{label}' is blank. Every figure is needed -- if it "
+            f"is genuinely zero, type 0."
+        )
+    try:
+        return Decimal(text)
+    except Exception:
+        raise ValueError(
+            f"row {row}: '{label}' is {value!r}, which is not a number"
+        ) from None
+
+
+def read_lump_sum_csv(path: Path):
+    """Load a filled-in worksheet. Returns the arguments for compute_election."""
+    from .lump_sum import AttributionYear, FilingStatus
+
+    lines = [
+        line for line in path.read_text().splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    reader = csv.DictReader(lines)
+    receipt: dict | None = None
+    years: list[AttributionYear] = []
+
+    for number, row in enumerate(reader, start=2):
+        role = (row.get("role") or "").strip().lower()
+        status = (row.get("filing_status") or "").strip().lower()
+        if status not in FilingStatus.ALL:
+            raise ValueError(
+                f"row {number}: filing_status {status!r} is not one of "
+                f"{', '.join(sorted(FilingStatus.ALL))}"
+            )
+        if role == "year_of_receipt":
+            if receipt is not None:
+                raise ValueError("more than one 'year_of_receipt' row")
+            receipt = {
+                "year": (row.get("year") or "").strip(),
+                "total_benefits": _num(row.get("amount"), "amount", number),
+                "other_income": _num(
+                    row.get("your_magi_that_year"), "your_magi_that_year", number
+                ),
+                "filing_status": status,
+                "tax_exempt_interest": _num(
+                    row.get("tax_exempt_interest") or "0",
+                    "tax_exempt_interest", number,
+                ),
+            }
+        elif role == "prior_year":
+            magi_raw = (row.get("your_magi_that_year") or "").strip()
+            years.append(AttributionYear(
+                year=(row.get("year") or "").strip(),
+                arrears=_num(row.get("amount"), "amount", number),
+                # Blank means "not known yet", which is different from zero.
+                known=bool(magi_raw),
+                other_income=(
+                    _num(magi_raw, "your_magi_that_year", number)
+                    if magi_raw else Decimal("0")
+                ),
+                filing_status=status,
+                benefits_already_received=_num(
+                    row.get("ss_already_received_that_year") or "0",
+                    "ss_already_received_that_year", number,
+                ),
+                tax_exempt_interest=_num(
+                    row.get("tax_exempt_interest") or "0",
+                    "tax_exempt_interest", number,
+                ),
+            ))
+        else:
+            raise ValueError(
+                f"row {number}: role {role!r} must be 'year_of_receipt' or "
+                f"'prior_year'"
+            )
+
+    if receipt is None:
+        raise ValueError("no 'year_of_receipt' row found")
+    if not years:
+        raise ValueError("no 'prior_year' rows found -- nothing to elect over")
+    return receipt, years
+
+
+def build_lump_sum_markdown(result, receipt_year: str = "") -> str:
+    def money(value: Decimal) -> str:
+        return f"{value:,.2f}"
+
+    out = [
+        f"# Section 86(e) lump-sum election — benefits received {receipt_year}",
+        "",
+        "A retroactive award pays several years of benefits at once. Taxed all "
+        "in the year of receipt, it usually lands in the 85% inclusion tier. "
+        "The election caps the inclusion at what those arrears would have "
+        "added to income in the years they were *for*.",
+        "",
+        "**It is a ceiling, not an amendment.** The earlier years are not "
+        "reopened, not recomputed and not amended. The whole payment still "
+        "reports in the year of receipt.",
+        "",
+        "## The benefits",
+        "",
+        "| | Amount |",
+        "|---|---|",
+        f"| Total on the SSA-1099 | **{money(result.total_benefits)}** |",
+        f"| Attributable to earlier years | {money(result.arrears_total)} |",
+        f"| Attributable to {receipt_year or 'the year of receipt'} | "
+        f"{money(result.current_year_portion)} |",
+        "",
+        "## Without the election — everything taxed in the year of receipt",
+        "",
+        "| | Amount |",
+        "|---|---|",
+    ]
+    w = result.without_election
+    out += [
+        f"| Modified AGI | {money(w.modified_agi)} |",
+        f"| + one-half of benefits | {money(w.benefits * Decimal('0.5'))} |",
+        f"| **Provisional income** | **{money(w.provisional_income)}** |",
+        f"| Base amount / adjusted base amount | {money(w.base_amount)} / "
+        f"{money(w.adjusted_base_amount)} |",
+        f"| Tier reached | **{w.tier}** |",
+        f"| **Taxable benefits** | **{money(w.taxable)}** ({w.included_pct}% "
+        f"of benefits) |",
+        "",
+        "## With the election",
+        "",
+        "### Step 1 — the portion attributable to the year of receipt",
+        "",
+        "Taxed normally, on that year's income.",
+        "",
+        "| | Amount |",
+        "|---|---|",
+    ]
+    c = result.current_portion_only
+    out += [
+        f"| Benefits attributable to the year of receipt | "
+        f"{money(c.benefits)} |",
+        f"| Provisional income | {money(c.provisional_income)} |",
+        f"| Tier reached | {c.tier} |",
+        f"| **Taxable** | **{money(c.taxable)}** |",
+        "",
+        "### Step 2 — the increase each earlier year would have seen",
+        "",
+        "Each year is recomputed as if its share of the arrears had been paid "
+        "then. The **increase** is what §86(e) measures.",
+        "",
+        "| Year | Arrears | That year's MAGI | Provisional w/ arrears | Tier "
+        "| Taxable before | Taxable after | **Increase** |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    for y in sorted(result.years, key=lambda z: z.year):
+        if not y.known:
+            out.append(
+                f"| {y.year} | {money(y.arrears)} | _not supplied_ | — | — "
+                f"| — | — | **not yet computable** |"
+            )
+            continue
+        out.append(
+            f"| {y.year} | {money(y.arrears)} | {money(y.other_income)} "
+            f"| {money(y.after.provisional_income)} | {y.after.tier} "
+            f"| {money(y.before.taxable)} | {money(y.after.taxable)} "
+            f"| **{money(y.increase)}** |"
+        )
+    label = ("Ceiling so far (INCOMPLETE)" if not result.complete
+             else "Ceiling (§86(e)(1))")
+    out += [
+        f"| | | | | | | **{label}** | **{money(result.ceiling)}** |",
+        "",
+        "## Result",
+        "",
+    ]
+    if not result.complete:
+        missing = ", ".join(sorted(result.unknown_years))
+        out += [
+            f"**No bottom line yet — {missing} still missing.**",
+            "",
+            "Each missing year can only add to the ceiling, so reporting a "
+            "total now would make the election look better than it is. The "
+            "per-year rows above are correct for the years that are filled "
+            "in; supply the rest and re-run.",
+            "",
+            f"For reference, without any election the whole "
+            f"{money(result.total_benefits)} produces "
+            f"**{money(result.without_election.taxable)}** of taxable "
+            f"benefits.",
+            "",
+        ]
+    else:
+        out += [
+            "| | Taxable benefits |",
+            "|---|---|",
+            f"| Without the election | "
+            f"{money(result.without_election.taxable)} |",
+            f"| With the election (step 1 + step 2) | "
+            f"**{money(result.with_election)}** |",
+            f"| **Reduction in taxable income** | "
+            f"**{money(result.savings)}** |",
+            "",
+        ]
+    if result.election_helps:
+        out += [
+            f"**Make the election.** It removes {money(result.savings)} from "
+            f"taxable income. That is a reduction in TAXABLE INCOME, not in "
+            f"tax — the cash saving is that figure times the marginal rate.",
+            "",
+        ]
+    else:
+        out += [
+            "**Do not make the election.** On these figures it does not help. "
+            "It is elective, so simply leave it off.",
+            "",
+        ]
+    if result.warnings:
+        out += ["## Warnings", ""]
+        out += [f"- {w}" for w in result.warnings]
+        out.append("")
+    out += [
+        "---",
+        "",
+        "Every figure above comes from the SSA-1099 as parsed, plus the "
+        "prior-year figures entered in the worksheet CSV. Confirm each "
+        "prior-year MAGI against that year's filed return before relying on "
+        "this. The thresholds are §86(c)(1) and §86(c)(2); the inclusion "
+        "formula is §86(a)(1) and §86(a)(2); attribution follows "
+        "§86(e)(2)(A). This is a computation, not tax advice.",
+        "",
+    ]
+    return "\n".join(out)
+
+
+def write_lump_sum_worksheet(result, path: Path, receipt_year: str = "") -> Path:
+    path.write_text(build_lump_sum_markdown(result, receipt_year))
+    return path

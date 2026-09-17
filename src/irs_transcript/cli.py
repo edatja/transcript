@@ -73,9 +73,70 @@ def build_parser() -> argparse.ArgumentParser:
         help="with --dump-text, limit to one page number",
     )
     parser.add_argument(
+        "--lump-sum", metavar="CSV",
+        help="compute the section 86(e) social security lump-sum election "
+             "from a filled-in lump_sum_input.csv",
+    )
+    parser.add_argument(
         "--quiet", action="store_true", help="only print errors",
     )
     return parser
+
+
+def _run_lump_sum(csv_path: Path, out_dir: Path, quiet: bool) -> int:
+    """Compute the section 86(e) election from a filled-in worksheet CSV."""
+    from .lump_sum import compute_election
+    from .report import read_lump_sum_csv, write_lump_sum_worksheet
+
+    if not csv_path.exists():
+        print(
+            f"{csv_path} not found.\n\n"
+            f"Run `python3 run.py` first -- if the transcripts contain an "
+            f"SSA-1099 with prior-year payments, it writes a pre-filled "
+            f"template to data/output/lump_sum_input.csv. Fill in each year's "
+            f"income figures, then run this again.",
+            file=sys.stderr,
+        )
+        return 1
+
+    try:
+        receipt, years = read_lump_sum_csv(csv_path)
+    except ValueError as exc:
+        print(f"Could not read {csv_path.name}: {exc}", file=sys.stderr)
+        return 1
+
+    result = compute_election(
+        total_benefits=receipt["total_benefits"],
+        current_year_other_income=receipt["other_income"],
+        current_year_filing_status=receipt["filing_status"],
+        years=years,
+        current_year_tax_exempt_interest=receipt["tax_exempt_interest"],
+    )
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = write_lump_sum_worksheet(
+        result, out_dir / "lump_sum_worksheet.md", receipt["year"]
+    )
+
+    if not quiet:
+        print()
+        print(f"  Without the election: "
+              f"{result.without_election.taxable:>12,.2f} taxable benefits")
+        if result.complete:
+            print(f"  With the election:    "
+                  f"{result.with_election:>12,.2f} taxable benefits")
+            print(f"  {'Reduction:':<21} {result.savings:>12,.2f}")
+        else:
+            missing = ", ".join(sorted(result.unknown_years))
+            print(f"  With the election:    (not computable -- {missing} "
+                  f"missing)")
+        print()
+        for warning in result.warnings:
+            print(f"  ! {warning}")
+        if result.warnings:
+            print()
+        print(f"Wrote {path}")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -85,6 +146,9 @@ def main(argv: list[str] | None = None) -> int:
         from .extract import extract_text_only
         print(extract_text_only(args.dump_text, args.page))
         return 0
+
+    if args.lump_sum:
+        return _run_lump_sum(Path(args.lump_sum), Path(args.output), args.quiet)
 
     paths = _collect(args.inputs)
     if not paths:
