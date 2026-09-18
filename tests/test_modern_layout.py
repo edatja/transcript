@@ -143,3 +143,30 @@ def test_prior_year_payments_are_not_added_to_benefits(docs):
     ssa = one(docs, "SSA-1099")
     assert ssa.amounts["social_security_benefits"] == Decimal("177414.00")
     assert "TY 2022 Payments" in ssa.raw_fields
+
+
+def test_browser_print_furniture_does_not_lose_the_payer():
+    """Regression: a transcript saved with the browser's File > Print carries
+    its page header and footer into the middle of form blocks.
+
+    "2 of 3 9/18/2026, 10:29 AM" splits on the clock's colon into a
+    label/value pair, which closed the payer section and dropped the payer's
+    name on the following line.
+    """
+    lines = [
+        "Wage and Income Transcript",
+        "Tax Period Requested: December, 2024",
+        "Form 1099-INT",
+        "Payer:",
+        "2 of 3 9/18/2026, 10:29 AM",
+        "Wage and Income ***-**-1522 ALL FORMS 202412 111387029061-1 "
+        "https://la.www4.irs.gov/esrv/tds/requests/getProduct/getProduct",
+        "Payer's Federal Identification Number (FIN): 36-3716228",
+        "IL STATE TREASURERS OFFICE",
+        "UCP DIVISION",
+        "Interest: $23.00",
+    ]
+    docs = parse_wage_and_income([(1, line) for line in lines], "x.pdf")
+    assert docs[0].payer_name == "IL STATE TREASURERS OFFICE"
+    assert docs[0].payer_tin == "36-3716228"
+    assert docs[0].amounts["interest"] == Decimal("23.00")

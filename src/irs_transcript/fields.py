@@ -54,6 +54,14 @@ _NOISE = re.compile(
     r"|Re(?:quest|sponse)\s+Date\s*:.*"
     r"|(?:SSN|EIN|TIN)\s+Provided\s*:.*"
     r"|Tax\s+Period\s+(?:Requested|Ending)\s*:.*"
+    # Browser print furniture. A transcript saved with File > Print carries
+    # the browser's own header and footer on every page, and those land in
+    # the middle of form blocks just like the IRS's own repeated header.
+    # "2 of 3 9/18/2026, 10:29 AM" splits on the clock's colon into a
+    # label/value pair, which ends the party section and loses the payer
+    # NAME on the next line. No transcript field value is ever a URL.
+    r"|\d+\s+of\s+\d+\s+\d{1,2}/\d{1,2}/\d{2,4},?\s*\d{1,2}:\d{2}(?:\s*[AP]M)?"
+    r"|.*https?://\S+.*"
     r"|-{3,}|={3,}|\.{3,}|_{3,}"
     r"|\s*"
     r")$",
